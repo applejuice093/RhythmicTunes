@@ -1,6 +1,12 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const {
+  getPasswordError,
+  isNonEmptyString,
+  isValidEmail,
+  normalizeEmail,
+} = require("../utils/validation");
 
 const createToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -86,23 +92,31 @@ const register = async (req, res) => {
   try {
     const { name, username, email, password } = req.body;
 
-    if (!name || !email || !password) {
+    if (!isNonEmptyString(name) || !isNonEmptyString(email) || !password) {
       return res.status(400).json({ message: "Name, email, and password are required." });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const uniqueUsername = await generateUniqueUsername(
-      {
-        username,
-        name,
-        email: normalizedEmail,
-      }
-    );
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    const passwordError = getPasswordError(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return res.status(409).json({ message: "Email is already registered." });
     }
+
+    const uniqueUsername = await generateUniqueUsername({
+      username: typeof username === "string" ? username : "",
+      name,
+      email: normalizedEmail,
+    });
 
     const user = await User.create({
       name,
@@ -124,11 +138,11 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (!isNonEmptyString(email) || typeof password !== "string" || !password) {
       return res.status(400).json({ message: "Email and password are required." });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = normalizeEmail(email);
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
