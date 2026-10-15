@@ -83,7 +83,13 @@ const getPlaylistById = async (req, res) => {
 
     const playlist = await populatePlaylistSongs(Playlist.findById(req.params.id));
 
-    if (!playlist) {
+    const isOwner = Boolean(
+      req.user && playlist && playlist.userId.toString() === req.user._id.toString()
+    );
+
+    // Private playlists are only visible to their owner. Respond 404 rather
+    // than 403 so the existence of someone else's private playlist isn't leaked.
+    if (!playlist || (!playlist.isPublic && !isOwner)) {
       return res.status(404).json({ message: "Playlist not found." });
     }
 
