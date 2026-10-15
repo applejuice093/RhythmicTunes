@@ -7,45 +7,12 @@ const {
   isValidEmail,
   normalizeEmail,
 } = require("../utils/validation");
+const { generateUniqueUsername } = require("../utils/username");
 
 const createToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
-};
-
-const normalizeUsername = (value = "") => {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_]/g, "")
-    .slice(0, 24);
-};
-
-const createUsernameBase = ({ username, name, email }) => {
-  const emailPrefix = email.split("@")[0] || "";
-  return normalizeUsername(username || name || emailPrefix) || "listener";
-};
-
-const generateUniqueUsername = async (details, excludeUserId) => {
-  const base = createUsernameBase(details);
-  let suffix = 0;
-
-  while (true) {
-    const nextSuffix = suffix ? String(suffix) : "";
-    const candidateBase = base.slice(0, Math.max(1, 24 - nextSuffix.length));
-    const candidate = `${candidateBase}${nextSuffix}`;
-    const existingUser = await User.findOne({
-      username: candidate,
-      ...(excludeUserId ? { _id: { $ne: excludeUserId } } : {}),
-    }).select("_id");
-
-    if (!existingUser) {
-      return candidate;
-    }
-
-    suffix += 1;
-  }
 };
 
 const ensureUserProfileFields = async (user) => {
