@@ -1,5 +1,12 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const {
+  getPasswordError,
+  isNonEmptyString,
+  isValidEmail,
+  normalizeEmail,
+} = require("../utils/validation");
+const { generateUniqueUsername, isValidUsername } = require("../utils/username");
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -52,24 +59,31 @@ const createUser = async (req, res) => {
   try {
     const { name, username, email, password, isAdmin } = req.body;
 
-    if (!name || !email || !password) {
+    if (!isNonEmptyString(name) || !isNonEmptyString(email) || !password) {
       return res.status(400).json({ message: "Name, email, and password are required." });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    const passwordError = getPasswordError(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return res.status(409).json({ message: "Email is already registered." });
     }
 
-    const baseUsername = username || email.split("@")[0] || "listener";
-    let uniqueUsername = baseUsername;
-    let suffix = 0;
-    while (await User.findOne({ username: uniqueUsername })) {
-        suffix++;
-        uniqueUsername = `${baseUsername}${suffix}`;
-    }
+    // Same rules as self-registration: lower-case, [a-z0-9_], max 24 chars.
+    const uniqueUsername = await generateUniqueUsername({
+      username: typeof username === "string" ? username : "",
+      email: normalizedEmail,
+    });
 
     const user = await User.create({
       name,
@@ -123,20 +137,34 @@ const updateProfile = async (req, res) => {
     const userToUpdate = await User.findById(req.user._id);
     if (!userToUpdate) return res.status(404).json({ message: "User not found." });
 
-    if (username) {
-      const existingUser = await User.findOne({ username: username.toLowerCase().trim() });
+    // Only validate when the username actually changes, so accounts with a
+    // legacy username can still update other profile fields.
+    const requestedUsername = typeof username === "string" ? username.trim().toLowerCase() : "";
+    if (requestedUsername && requestedUsername !== userToUpdate.username) {
+      if (!isValidUsername(username)) {
+        return res.status(400).json({
+          message: "Username must be 1-24 characters: letters, numbers, or underscores.",
+        });
+      }
+
+      const existingUser = await User.findOne({ username: requestedUsername });
       if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
         return res.status(400).json({ message: "Username already taken." });
       }
-      userToUpdate.username = username.toLowerCase().trim();
+      userToUpdate.username = requestedUsername;
     }
 
     if (email) {
-      const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address." });
+      }
+
+      const normalizedEmail = normalizeEmail(email);
+      const existingEmail = await User.findOne({ email: normalizedEmail });
       if (existingEmail && existingEmail._id.toString() !== req.user._id.toString()) {
         return res.status(400).json({ message: "Email already registered." });
       }
-      userToUpdate.email = email.toLowerCase().trim();
+      userToUpdate.email = normalizedEmail;
     }
 
     await userToUpdate.save();
@@ -160,6 +188,11 @@ const changePassword = async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ message: "Old password and new password are required." });
+    }
+
+    const passwordError = getPasswordError(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError.replace(/^Password/, "New password") });
     }
 
     const user = await User.findById(req.user._id);

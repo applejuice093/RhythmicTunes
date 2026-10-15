@@ -1,16 +1,39 @@
-# React + Vite
+# RhythmicTunes client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite single-page app for RhythmicTunes. It talks to the Express API
+in `../server` through the Axios instance in `src/api/axiosInstance.js`, which
+attaches the stored JWT as a bearer token.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+cp .env.example .env   # set VITE_API_URL, e.g. http://localhost:5000
+npm install
+npm run dev            # http://localhost:5173
+```
 
-## React Compiler
+The API must be running for anything beyond the landing page. From the repo
+root, `npm run dev` starts both together. See the root
+[README](../README.md) and [docs/SETUP.md](../docs/SETUP.md).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the ESLint configuration
+| Command           | What it does |
+| ----------------- | ------------ |
+| `npm run dev`     | Vite dev server with hot reload |
+| `npm run build`   | Production build into `dist/` (git-ignored) |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint`    | ESLint |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Where things live
+
+- `src/App.jsx`: routes, plus `ProtectedRoute` / `AdminRoute` guards.
+- `src/pages/`: one component per route (dashboard, explore, search,
+  playlists, artists, history, activity, profile, admin, ...).
+- `src/components/`: app layout, sidebar, navbar, song cards, favorite button
+  and the persistent `MusicPlayer`.
+- `src/store/`: Zustand stores for auth (`authStore`), playback queue and
+  state (`playerStore`) and audio-reactive visuals (`audioReactiveStore`).
+- `src/context/ThemeContext.jsx`: theme colors derived from the current
+  song's cover art.
+- `src/hooks/useDominantColor.js`: extracts accent colors from cover art.

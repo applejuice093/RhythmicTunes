@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const jwt = require("jsonwebtoken");
 const Artist = require("../models/Artist");
 require("../models/Song");
 const User = require("../models/User");
@@ -42,26 +41,13 @@ const getArtistById = async (req, res) => {
     }
 
     const artistResponse = formatArtist(artist);
-    artistResponse.isFollowing = false;
-
-    const authHeader = req.headers.authorization;
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id).select("followedArtists");
-
-        artistResponse.isFollowing = Boolean(
-          user &&
-            user.followedArtists.some(
-              (artistId) => artistId.toString() === artist._id.toString()
-            )
-        );
-      } catch (error) {
-        artistResponse.isFollowing = false;
-      }
-    }
+    // req.user is set by optionalAuth when the request carries a valid token.
+    artistResponse.isFollowing = Boolean(
+      req.user &&
+        req.user.followedArtists.some(
+          (artistId) => artistId.toString() === artist._id.toString()
+        )
+    );
 
     return res.json(artistResponse);
   } catch (error) {

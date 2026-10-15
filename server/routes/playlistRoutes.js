@@ -8,13 +8,13 @@ const {
   removeSongFromPlaylist,
   updatePlaylist,
 } = require("../controllers/playlistController");
-const { protect } = require("../middleware/authMiddleware");
+const { optionalAuth, protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 router.get("/", protect, getUserPlaylists);
 router.post("/", protect, createPlaylist);
-router.get("/:id", getPlaylistById);
+router.get("/:id", optionalAuth, getPlaylistById);
 router.put("/:id", protect, updatePlaylist);
 router.delete("/:id", protect, deletePlaylist);
 router.post("/:id/songs", protect, addSongToPlaylist);

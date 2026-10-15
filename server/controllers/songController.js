@@ -1,9 +1,11 @@
 const mongoose = require("mongoose");
 const Artist = require("../models/Artist");
 const ListeningHistory = require("../models/ListeningHistory");
+const Playlist = require("../models/Playlist");
 const Song = require("../models/Song");
 const User = require("../models/User");
 const { searchSpotifyTracks } = require("../services/spotifyService");
+const { attachSongsToPlayCounts } = require("../utils/recommendationEngine");
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -155,22 +157,7 @@ const getTrendingSongs = async (req, res) => {
 
     const songIds = playCounts.map((item) => item._id).filter(Boolean);
     const songs = await Song.find({ _id: { $in: songIds } }).populate("artistId", "name");
-    const songById = new Map(songs.map((song) => [song._id.toString(), song]));
-
-    const trendingSongs = playCounts
-      .map((item) => {
-        const song = songById.get(item._id.toString());
-
-        if (!song) {
-          return null;
-        }
-
-        return {
-          playCount: item.playCount,
-          song,
-        };
-      })
-      .filter(Boolean);
+    const trendingSongs = attachSongsToPlayCounts(playCounts, songs);
 
     return res.json(trendingSongs);
   } catch (error) {
@@ -257,7 +244,15 @@ const deleteSong = async (req, res) => {
       return res.status(404).json({ message: "Song not found." });
     }
 
-    await Song.findByIdAndDelete(req.params.id);
+    // Remove dangling references so playlists, liked songs and history don't
+    // keep pointing at a song that no longer exists.
+    await Promise.all([
+      Song.deleteOne({ _id: song._id }),
+      Playlist.updateMany({ songs: song._id }, { $pull: { songs: song._id } }),
+      User.updateMany({ likedSongs: song._id }, { $pull: { likedSongs: song._id } }),
+      ListeningHistory.deleteMany({ songId: song._id }),
+    ]);
+
     return res.json({ message: "Song deleted successfully." });
   } catch (error) {
     return res.status(500).json({ message: "Failed to delete song.", error: error.message });

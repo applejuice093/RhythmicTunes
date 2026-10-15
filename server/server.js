@@ -10,10 +10,14 @@ const playlistRoutes = require("./routes/playlistRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const songRoutes = require("./routes/songRoutes");
 const userRoutes = require("./routes/userRoutes");
-
-dotenv.config();
+const { assertRequiredEnv } = require("./config/env");
+const { errorHandler, notFound } = require("./middleware/errorHandler");
 
 const path = require("path");
+
+// Load server/.env regardless of the directory the process was started from.
+dotenv.config({ path: path.join(__dirname, ".env") });
+assertRequiredEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,8 +35,10 @@ app.use("/api/playlists", playlistRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/users", userRoutes);
-app.use('/songs', express.static('uploads/audio'));
-app.use('/covers', express.static('uploads/covers'));
+// Legacy short paths for uploaded media; resolved from this file so the server
+// works no matter which directory it is started from.
+app.use("/songs", express.static(path.join(__dirname, "uploads", "audio")));
+app.use("/covers", express.static(path.join(__dirname, "uploads", "covers")));
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -46,6 +52,10 @@ mongoose
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+// Must be registered after every route.
+app.use("/api", notFound);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`RhythmicTunes server running on port ${PORT}`);

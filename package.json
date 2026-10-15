@@ -4,12 +4,22 @@
   "description": "Full-stack MERN music streaming application.",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm --prefix server start\" \"npm --prefix client run dev\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n server,client -c blue,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "start": "npm --prefix server start",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "lint": "npm --prefix client run lint",
+    "seed": "npm --prefix server run seed",
+    "test": "npm --prefix server test"
+  },
+  "engines": {
+    "node": ">=20.19"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "concurrently": "^9.2.1"

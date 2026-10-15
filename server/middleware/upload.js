@@ -21,7 +21,6 @@ const audioStorage = multer.diskStorage({
   },
 });
 
-
 const coverStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, coverDir),
   filename: (req, file, cb) => {
@@ -31,13 +30,19 @@ const coverStorage = multer.diskStorage({
   },
 });
 
+const unsupportedFormatError = (message) => {
+  const error = new Error(message);
+  error.status = 400;
+  return error;
+};
+
 const audioFilter = (req, file, cb) => {
   const allowed = [".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".webm"];
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowed.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error(`Audio format '${ext}' not supported. Use: ${allowed.join(", ")}`));
+    cb(unsupportedFormatError(`Audio format '${ext}' not supported. Use: ${allowed.join(", ")}`));
   }
 };
 
@@ -47,7 +52,7 @@ const imageFilter = (req, file, cb) => {
   if (allowed.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error(`Image format '${ext}' not supported. Use: ${allowed.join(", ")}`));
+    cb(unsupportedFormatError(`Image format '${ext}' not supported. Use: ${allowed.join(", ")}`));
   }
 };
 
