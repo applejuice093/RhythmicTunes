@@ -10,8 +10,10 @@ const playlistRoutes = require("./routes/playlistRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const songRoutes = require("./routes/songRoutes");
 const userRoutes = require("./routes/userRoutes");
+const { assertRequiredEnv } = require("./config/env");
 
 dotenv.config();
+assertRequiredEnv();
 
 const path = require("path");
 
