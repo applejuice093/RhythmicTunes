@@ -1,11 +1,15 @@
+const path = require("path");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const { assertRequiredEnv } = require("./config/env");
 const Artist = require("./models/Artist");
 const Song = require("./models/Song");
 const ListeningHistory = require("./models/ListeningHistory");
 const User = require("./models/User");
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, ".env") });
+// Seeding only needs the database connection.
+assertRequiredEnv(process.env, ["MONGO_URI"]);
 
 // ── Artist seed data ────────────────────────────────────────────────
 const artistSeedData = [
@@ -220,6 +224,7 @@ async function seed() {
     console.log(`   ${artists.length} artists | ${songs.length} songs`);
   } catch (error) {
     console.error("✗ Seed failed:", error.message);
+    process.exitCode = 1;
   } finally {
     await mongoose.disconnect();
     console.log("✓ Disconnected from MongoDB");

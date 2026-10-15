@@ -13,10 +13,11 @@ const userRoutes = require("./routes/userRoutes");
 const { assertRequiredEnv } = require("./config/env");
 const { errorHandler, notFound } = require("./middleware/errorHandler");
 
-dotenv.config();
-assertRequiredEnv();
-
 const path = require("path");
+
+// Load server/.env regardless of the directory the process was started from.
+dotenv.config({ path: path.join(__dirname, ".env") });
+assertRequiredEnv();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
