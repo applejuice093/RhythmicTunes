@@ -31,8 +31,10 @@ app.use("/api/playlists", playlistRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/users", userRoutes);
-app.use('/songs', express.static('uploads/audio'));
-app.use('/covers', express.static('uploads/covers'));
+// Legacy short paths for uploaded media; resolved from this file so the server
+// works no matter which directory it is started from.
+app.use("/songs", express.static(path.join(__dirname, "uploads", "audio")));
+app.use("/covers", express.static(path.join(__dirname, "uploads", "covers")));
 
 mongoose
   .connect(process.env.MONGO_URI)
