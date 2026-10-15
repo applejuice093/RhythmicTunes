@@ -5,6 +5,7 @@ const Playlist = require("../models/Playlist");
 const Song = require("../models/Song");
 const User = require("../models/User");
 const { searchSpotifyTracks } = require("../services/spotifyService");
+const { attachSongsToPlayCounts } = require("../utils/recommendationEngine");
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -156,22 +157,7 @@ const getTrendingSongs = async (req, res) => {
 
     const songIds = playCounts.map((item) => item._id).filter(Boolean);
     const songs = await Song.find({ _id: { $in: songIds } }).populate("artistId", "name");
-    const songById = new Map(songs.map((song) => [song._id.toString(), song]));
-
-    const trendingSongs = playCounts
-      .map((item) => {
-        const song = songById.get(item._id.toString());
-
-        if (!song) {
-          return null;
-        }
-
-        return {
-          playCount: item.playCount,
-          song,
-        };
-      })
-      .filter(Boolean);
+    const trendingSongs = attachSongsToPlayCounts(playCounts, songs);
 
     return res.json(trendingSongs);
   } catch (error) {

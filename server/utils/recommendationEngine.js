@@ -9,6 +9,12 @@ const artistNamePopulation = {
   select: "name",
 };
 
+/**
+ * Stringifies, trims and de-duplicates values (ObjectIds, genres, ...),
+ * dropping null/undefined/empty entries while preserving first-seen order.
+ * @param {unknown[]} values
+ * @returns {string[]}
+ */
 const getUniqueValues = (values) => {
   const normalizedValues = values
     .filter((value) => value !== undefined && value !== null)
@@ -16,6 +22,26 @@ const getUniqueValues = (values) => {
     .filter(Boolean);
 
   return [...new Set(normalizedValues)];
+};
+
+/**
+ * Joins aggregated `{ _id: songId, playCount }` rows with their song documents,
+ * keeping the aggregation's ranking order and skipping songs that no longer
+ * exist (e.g. deleted after being played).
+ * @param {{ _id: unknown, playCount: number }[]} playCounts
+ * @param {{ _id: unknown }[]} songs
+ * @returns {{ playCount: number, song: object }[]}
+ */
+const attachSongsToPlayCounts = (playCounts, songs) => {
+  const songById = new Map(songs.map((song) => [song._id.toString(), song]));
+
+  return playCounts
+    .filter((item) => item && item._id)
+    .map((item) => {
+      const song = songById.get(item._id.toString());
+      return song ? { playCount: item.playCount, song } : null;
+    })
+    .filter(Boolean);
 };
 
 const getSongRecommendationsByGenres = async (genres, excludedSongIds) => {
@@ -74,22 +100,8 @@ const trendBasedRecommendations = async () => {
   const songs = await Song.find({ _id: { $in: songIds } })
     .select(songRecommendationFields)
     .populate(artistNamePopulation);
-  const songById = new Map(songs.map((song) => [song._id.toString(), song]));
 
-  return playCounts
-    .map((item) => {
-      const song = songById.get(item._id.toString());
-
-      if (!song) {
-        return null;
-      }
-
-      return {
-        playCount: item.playCount,
-        song,
-      };
-    })
-    .filter(Boolean);
+  return attachSongsToPlayCounts(playCounts, songs);
 };
 
 const playlistBasedRecommendations = async (userId) => {
@@ -109,6 +121,8 @@ const playlistBasedRecommendations = async (userId) => {
 };
 
 module.exports = {
+  attachSongsToPlayCounts,
+  getUniqueValues,
   historyBasedRecommendations,
   playlistBasedRecommendations,
   trendBasedRecommendations,
