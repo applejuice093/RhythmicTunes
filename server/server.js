@@ -11,6 +11,7 @@ const recommendationRoutes = require("./routes/recommendationRoutes");
 const songRoutes = require("./routes/songRoutes");
 const userRoutes = require("./routes/userRoutes");
 const { assertRequiredEnv } = require("./config/env");
+const { errorHandler, notFound } = require("./middleware/errorHandler");
 
 dotenv.config();
 assertRequiredEnv();
@@ -50,6 +51,10 @@ mongoose
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+// Must be registered after every route.
+app.use("/api", notFound);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`RhythmicTunes server running on port ${PORT}`);
