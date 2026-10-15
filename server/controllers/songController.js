@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Artist = require("../models/Artist");
 const ListeningHistory = require("../models/ListeningHistory");
+const Playlist = require("../models/Playlist");
 const Song = require("../models/Song");
 const User = require("../models/User");
 const { searchSpotifyTracks } = require("../services/spotifyService");
@@ -257,7 +258,15 @@ const deleteSong = async (req, res) => {
       return res.status(404).json({ message: "Song not found." });
     }
 
-    await Song.findByIdAndDelete(req.params.id);
+    // Remove dangling references so playlists, liked songs and history don't
+    // keep pointing at a song that no longer exists.
+    await Promise.all([
+      Song.deleteOne({ _id: song._id }),
+      Playlist.updateMany({ songs: song._id }, { $pull: { songs: song._id } }),
+      User.updateMany({ likedSongs: song._id }, { $pull: { likedSongs: song._id } }),
+      ListeningHistory.deleteMany({ songId: song._id }),
+    ]);
+
     return res.json({ message: "Song deleted successfully." });
   } catch (error) {
     return res.status(500).json({ message: "Failed to delete song.", error: error.message });
